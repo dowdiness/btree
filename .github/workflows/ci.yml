@@ -1,0 +1,181 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NEW_MOON_MOD: "0"
+  OPAM_REPOSITORY_COMMIT: 7de34fe2876434c0349750455d6c8443fcee36f6
+
+jobs:
+  quality:
+    name: Quality
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up MoonBit
+        uses: ./.github/actions/setup-moonbit
+
+      - name: Update root dependencies
+        run: ./scripts/moon-update.sh
+
+      - name: Update proof dependencies
+        working-directory: proof
+        run: ../scripts/moon-update.sh
+
+      - name: Check formatting
+        run: NEW_MOON_MOD=0 moon fmt --check
+
+      - name: Check proof formatting
+        working-directory: proof
+        run: NEW_MOON_MOD=0 moon fmt --check
+
+      - name: Check root module
+        run: NEW_MOON_MOD=0 moon check --deny-warn
+
+      - name: Check proof module
+        working-directory: proof
+        run: NEW_MOON_MOD=0 moon check --deny-warn
+
+      - name: Generate root interface
+        run: NEW_MOON_MOD=0 moon info
+
+      - name: Generate proof interface
+        working-directory: proof
+        run: NEW_MOON_MOD=0 moon info
+
+      - name: Fail on generated interface drift
+        run: git diff --exit-code -- pkg.generated.mbti proof/pkg.generated.mbti
+
+  test:
+    name: Release tests (${{ matrix.target }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [wasm, wasm-gc, js, native]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up MoonBit
+        uses: ./.github/actions/setup-moonbit
+
+      - name: Update dependencies
+        run: ./scripts/moon-update.sh
+
+      - name: Run release tests
+        run: NEW_MOON_MOD=0 moon test --release --target "${{ matrix.target }}"
+
+  benchmark:
+    name: Benchmarks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up MoonBit
+        uses: ./.github/actions/setup-moonbit
+
+      - name: Update dependencies
+        run: ./scripts/moon-update.sh
+
+      - name: Run release benchmarks
+        run: NEW_MOON_MOD=0 moon bench --release
+
+  proof:
+    name: Formal proof
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up MoonBit
+        uses: ./.github/actions/setup-moonbit
+
+      - name: Install Why3 1.7.2 and archive tools
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -yq opam unzip
+          opam init --disable-sandboxing --yes default \
+            "git+https://github.com/ocaml/opam-repository.git#${OPAM_REPOSITORY_COMMIT}"
+          eval "$(opam env)"
+          opam install why3.1.7.2 --yes
+          opam var bin >> "$GITHUB_PATH"
+
+      - name: Download and verify official Z3 4.13.4
+        env:
+          Z3_URL: https://github.com/Z3Prover/z3/releases/download/z3-4.13.4/z3-4.13.4-x64-glibc-2.35.zip
+          Z3_SHA256: 93f91f9c6f4a00a041c19fc7a74adc1f441c8244ce70d486e19abcd89c6a014b
+        run: |
+          archive="$RUNNER_TEMP/z3-4.13.4-x64-glibc-2.35.zip"
+          curl --fail --location --retry 3 --retry-all-errors "$Z3_URL" --output "$archive"
+          echo "$Z3_SHA256  $archive" | sha256sum --check --status
+          unzip -q "$archive" -d "$RUNNER_TEMP/z3"
+          z3_bin="$(find "$RUNNER_TEMP/z3" -type f -name z3 -perm -111 -print -quit)"
+          test -n "$z3_bin"
+          dirname "$z3_bin" >> "$GITHUB_PATH"
+
+      - name: Detect and print proof toolchain versions
+        run: |
+          eval "$(opam env)"
+          why3 config detect
+          echo "MoonBit:"
+          moon version --all
+          echo "Why3:"
+          why3 --version
+          echo "Z3:"
+          z3 --version
+          echo "Detected prover versions:"
+          why3 config list-provers
+
+      - name: Update proof module
+        working-directory: proof
+        run: ../scripts/moon-update.sh
+
+      - name: Check and test proof module
+        working-directory: proof
+        run: |
+          NEW_MOON_MOD=0 moon check --deny-warn
+          NEW_MOON_MOD=0 moon test --release --target native
+
+      - name: Prove proof module
+        working-directory: proof
+        run: |
+          set -o pipefail
+          NEW_MOON_MOD=0 moon prove 2>&1 | tee "$RUNNER_TEMP/moon-prove.log"
+          grep -Fq "9 goals proved" "$RUNNER_TEMP/moon-prove.log"
+
+  all-checks-passed:
+    name: All Checks Passed
+    runs-on: ubuntu-24.04
+    needs: [quality, test, benchmark, proof]
+    if: always()
+    steps:
+      - name: Require every check to succeed
+        run: |
+          for result in \
+            "${{ needs.quality.result }}" \
+            "${{ needs.test.result }}" \
+            "${{ needs.benchmark.result }}" \
+            "${{ needs.proof.result }}"; do
+            test "$result" = success
+          done
+          echo "All required checks passed."

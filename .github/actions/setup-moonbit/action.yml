@@ -1,0 +1,38 @@
+name: 'Set up MoonBit'
+description: >-
+  Install the pinned MoonBit toolchain and core, and export NEW_MOON_MOD=0 for
+  every downstream step. NEW_MOON_MOD=0 opts out of the rr_moon_mod
+  TOML migration, which otherwise drops path fields from cross-repo deps that
+  have no valid TOML expression.
+
+runs:
+  using: composite
+  steps:
+    - name: Export NEW_MOON_MOD opt-out
+      shell: bash
+      run: echo "NEW_MOON_MOD=0" >> "$GITHUB_ENV"
+    - name: Install MoonBit
+      uses: hustcer/setup-moonbit@bdc8c076af1f4c5012a6ac3451a2009ec75bf921 # v1.22
+      with:
+        version: 0.10.4+ade96c819
+        core-version: 0.10.4+ade96c819
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+
+    - name: Verify MoonBit core bundle
+      shell: bash
+      run: |
+        for target in wasm wasm-gc js native; do
+          test -f "$HOME/.moon/lib/core/_build/$target/release/bundle/prelude/prelude.mi"
+        done
+
+    - name: Cache MoonBit registry state
+      uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+      with:
+        path: |
+          ~/.moon/registry/index
+          ~/.moon/registry/cache
+          ~/.moon/registry/symbols
+        key: moonbit-registry-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/moon.mod.json', '**/moon.mod') }}
+        restore-keys: |
+          moonbit-registry-${{ runner.os }}-${{ runner.arch }}-

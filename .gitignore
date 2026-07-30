@@ -1,0 +1,15 @@
+_build/
+target/
+.mooncakes/
+.moonagent/
+.DS_Store
+
+# Editor and local artifacts
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.env
+.repos/
+.worktrees/

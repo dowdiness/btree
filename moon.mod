@@ -9,7 +9,7 @@ import {
 
 readme = "README.md"
 
-repository = "https://github.com/dowdiness/canopy"
+repository = "https://github.com/dowdiness/btree"
 
 license = "Apache-2.0"
 

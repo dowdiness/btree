@@ -1,8 +1,12 @@
 # btree
 
+[![CI](https://github.com/dowdiness/btree/actions/workflows/ci.yml/badge.svg)](https://github.com/dowdiness/btree/actions/workflows/ci.yml)
+
 Counted B+ tree for [MoonBit](https://www.moonbitlang.com/) with O(log n) position-indexed access, insert, delete, and range operations.
 
 All data lives in leaf nodes. Internal nodes store only child pointers and span counts for positional navigation — a B+ tree indexed by cumulative span rather than keys.
+
+> Provenance: extracted with history from `dowdiness/canopy/lib/btree`. The published Mooncakes `0.2.0` remains immutable and was released from the Canopy tag `btree-v0.2.0`.
 
 ## Install
 
