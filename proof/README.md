@@ -52,7 +52,7 @@ Production deterministic/property tests cover those integration boundaries, incl
 
 ## Run
 
-The repository pins MoonBit `0.10.4+ade96c819`; CI pins Why3 1.7.2 and Z3 4.13.4.
+The repository pins MoonBit `0.10.21+06da1ed44`; CI pins Why3 1.7.2 and Z3 4.13.4.
 
 ```bash
 cd proof
