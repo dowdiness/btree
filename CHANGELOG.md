@@ -2,6 +2,29 @@
 
 All notable changes to `dowdiness/btree` are documented in this file.
 
+## [0.3.0] - 2026-11-18
+
+### Breaking changes
+
+- Adopt published `dowdiness/rle@0.4.0`: custom `BTreeElem` implementations
+  must change `Sliceable::slice` from `Result[Self, RleError]` to
+  `Self raise RleError`. Return successful elements directly and raise the
+  same errors instead of returning `Ok` / `Err`.
+- Target MoonBit compiler/core `0.10.21+06da1ed44`; older compilers are no
+  longer supported. Formatter-generated signatures use `Int32` (the explicit
+  spelling of the previous `Int` alias) and `#derive` attributes.
+
+### Changed
+
+- Update QuickCheck to published `0.15.1` and migrate property-test shrinking
+  to `moonbitlang/core/quickcheck/shrink` without changing generators or
+  shrink algorithms.
+- Preserve the infallible BTree range/view API and invariant-failure boundary:
+  internal slicing now uses `try!` for typed raised failures instead of
+  unwrapping a `Result`. No recovery fallback or error suppression is added.
+- Migrate both the production and independent scalar-proof modules to the
+  pinned toolchain. Tree algorithms and scalar proof obligations are unchanged.
+
 ## [0.2.0] - 2026-07-30
 
 ### Breaking changes
