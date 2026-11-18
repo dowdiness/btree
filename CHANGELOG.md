@@ -16,7 +16,7 @@ All notable changes to `dowdiness/btree` are documented in this file.
 
 ### Changed
 
-- Update QuickCheck to published `0.15.0` and migrate property-test shrinking
+- Update QuickCheck to published `0.15.1` and migrate property-test shrinking
   to `moonbitlang/core/quickcheck/shrink` without changing generators or
   shrink algorithms.
 - Preserve the infallible BTree range/view API and invariant-failure boundary:

@@ -11,7 +11,7 @@ All data lives in leaf nodes. Internal nodes store only child pointers and span 
 ## Install
 
 This release targets MoonBit compiler/core `0.10.21+06da1ed44` and published
-`dowdiness/rle@0.4.0` / `moonbitlang/quickcheck@0.15.0`.
+`dowdiness/rle@0.4.0` / `moonbitlang/quickcheck@0.15.1`.
 Custom `BTreeElem` types must implement
 `Sliceable::slice(...) -> Self raise @rle.RleError`, not return a `Result`.
 See [CHANGELOG.md](CHANGELOG.md) for migration details.
